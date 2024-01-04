@@ -1,0 +1,64 @@
+id: template_chat_flow
+name: Template Chat Flow
+environment:
+  python_requirements_txt: requirements.txt
+inputs:
+  chat_history:
+    type: list
+    is_chat_history: true
+  question:
+    type: string
+    is_chat_input: true
+    default: What is the role of bilogics in treatment of covid?
+outputs:
+  answer:
+    type: string
+    reference: ${Ask_LLM_For_Completion.output}
+    is_chat_output: true
+nodes:
+- name: Embedding_Azure_OpenAI
+  type: python
+  source:
+    type: package
+    tool: promptflow.tools.embedding.embedding
+  inputs:
+    connection: AZOpenAIConnection
+    deployment_name: text-embedding-ada-002
+    input: ${inputs.question}
+- name: prepareInputForThePrompt
+  type: python
+  source:
+    type: code
+    path: prepareInputForThePrompt.py
+  inputs:
+    vecdbresults: ${Vector_DB_Lookup.output}
+- name: Prompt
+  type: prompt
+  source:
+    type: code
+    path: Prompt.jinja2
+  inputs:
+    question: ${inputs.question}
+    contexts: ${prepareInputForThePrompt.output}
+- name: Ask_LLM_For_Completion
+  type: llm
+  source:
+    type: code
+    path: Ask_LLM_For_Completion.jinja2
+  inputs:
+    deployment_name: gpt-4
+    question: ${inputs.question}
+    addtionalcontext: ${Prompt.output}
+  connection: AZOpenAIConnection
+  api: chat
+- name: Vector_DB_Lookup
+  type: python
+  source:
+    type: package
+    tool: promptflow_vectordb.tool.vector_db_lookup.VectorDBLookup.search
+  inputs:
+    connection: AISearchnew
+    index_name: cogsrch-index-csv-vector
+    text_field: chunk
+    vector_field: chunkVector
+    vector: ${Embedding_Azure_OpenAI.output}

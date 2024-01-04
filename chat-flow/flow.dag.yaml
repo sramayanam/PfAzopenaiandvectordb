@@ -1,0 +1,53 @@
+id: template_chat_flow
+name: Template Chat Flow
+environment:
+  python_requirements_txt: requirements.txt
+inputs:
+  chat_history:
+    type: list
+    is_chat_history: true
+    default: []
+  question:
+    type: string
+    is_chat_input: true
+    default: What is the next best innovation after ChatGpt
+outputs:
+  answer1:
+    type: string
+    reference: ${chat.output}
+    is_chat_output: true
+nodes:
+- name: chat
+  use_variants: true
+node_variants:
+  chat:
+    default_variant_id: variant_1
+    variants:
+      variant_0:
+        node:
+          type: llm
+          source:
+            type: code
+            path: chat.jinja2
+          inputs:
+            deployment_name: gpt-4
+            max_tokens: 256
+            temperature: 0.7
+            question: ${inputs.question}
+            chat_history: ${inputs.chat_history}
+          connection: AZOpenAIConnection
+          api: chat
+      variant_1:
+        node:
+          type: llm
+          source:
+            type: code
+            path: llm_node_1.jinja2
+          inputs:
+            deployment_name: gpt-35-turbo
+            max_tokens: 256
+            temperature: 0.7
+            question: ${inputs.question}
+            chat_history: ${inputs.chat_history}
+          connection: AZOpenAIConnection
+          api: chat
